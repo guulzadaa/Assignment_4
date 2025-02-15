@@ -6,6 +6,7 @@ import models.Admin;
 import models.Booking;
 import models.Customer;
 import models.Room;
+import utils.CardValidator;
 import utils.DateValidator;
 import utils.InputValidator;
 
@@ -162,8 +163,15 @@ public class MyApplication {
             System.out.println("0. Logout");
             System.out.print("Choose an option: ");
 
-            int choice = scanner.nextInt();
-            scanner.nextLine();
+            int choice;
+            try {
+                choice = scanner.nextInt();
+                scanner.nextLine(); // Очистка буфера после nextInt()
+            } catch (InputMismatchException e) {
+                System.out.println("Invalid input! Please enter a number.");
+                scanner.nextLine(); // Очистка буфера, чтобы избежать зацикливания
+                continue;
+            }
 
             switch (choice) {
                 case 1 -> showRooms();
@@ -185,24 +193,167 @@ public class MyApplication {
         System.out.println("2. View My Bookings");
         System.out.println("0. Exit");
         System.out.print("Choose an option: ");
-        int choice = scanner.nextInt();
-        scanner.nextLine();
+
+        int choice;
+        try {
+            choice = scanner.nextInt();
+            scanner.nextLine();
+        } catch (InputMismatchException e) {
+            System.out.println("Invalid input! Please enter a number.");
+            scanner.nextLine();
+            return;
+        }
+
         switch (choice) {
             case 1 -> makeapayment();
             case 2 -> showMyBookings();
-            case 0 -> {
-                System.out.println("Exiting...");
-                return;
-            }
+            case 0 -> System.out.println("Exiting...");
             default -> System.out.println("Invalid option! Try again.");
         }
-        
     }
-    private void makeapayment() {
-        System.out.println("\n=== Make a Payment");
-        System.out.print("Make a Payment with Booking ID: ");
 
+    private void makeapayment() {
+        System.out.println("\n=== Make a Payment ===");
+        System.out.print("Enter your Booking ID (You can see your Booking ID in 'View all my bookings'): ");
+
+        int bookingId;
+        try {
+            bookingId = scanner.nextInt();
+            scanner.nextLine();
+        } catch (InputMismatchException e) {
+            System.out.println("Invalid input! Please enter a valid numeric Booking ID.");
+            scanner.nextLine();
+            return;
+        }
+
+        System.out.println("Choose payment method:");
+        System.out.println("1. Cash");
+        System.out.println("2. Credit/Debit Card");
+        System.out.println("3. Cryptocurrency");
+        System.out.print("Enter your choice (1-3): ");
+
+        int paymentChoice;
+        try {
+            paymentChoice = scanner.nextInt();
+            scanner.nextLine();
+        } catch (InputMismatchException e) {
+            System.out.println("Invalid input! Please enter 1, 2, or 3.");
+            scanner.nextLine();
+            return;
+        }
+
+        String response;
+
+        switch (paymentChoice) {
+            case 1 -> {
+                response = paymentController.createPayment(bookingId);
+                System.out.println(response);
+                System.out.println("Please make a payment at our reception.");
+            }
+            case 2 -> {
+                if (processCardPayment(scanner)) {
+                    response = paymentController.createPayment(bookingId);
+                    System.out.println(response);
+                    System.out.println("Payment successfully processed via card.");
+                } else {
+                    System.out.println("Payment failed due to invalid card details.");
+                }
+            }
+            case 3 -> {
+                if (processCryptoPayment(scanner)) {
+                    response = paymentController.createPayment(bookingId);
+                    System.out.println(response);
+                    System.out.println("Crypto payment initiated successfully.");
+                } else {
+                    System.out.println("Payment failed due to invalid crypto details.");
+                }
+            }
+            default -> System.out.println("Invalid choice. Please select a valid payment method.");
+        }
     }
+
+
+
+    private boolean processCardPayment() {
+        System.out.print("Enter your card number (16 digits): ");
+        String cardNumber = scanner.nextLine().replaceAll("\\s+", ""); // Убираем пробелы
+
+        if (!CardValidator.isValidCardNumber(cardNumber)) {
+            System.out.println("Invalid card number!");
+            return false;
+        }
+
+        System.out.print("Enter card expiration date (MM/YY): ");
+        String expiryDate = scanner.nextLine();
+        if (!CardValidator.isValidExpiryDate(expiryDate)) {
+            System.out.println("Invalid expiration date!");
+            return false;
+        }
+
+        System.out.print("Enter cardholder name (Firstname Lastname): ");
+        String cardHolder = scanner.nextLine();
+
+        System.out.print("Enter CVV (3 digits): ");
+        String cvv = scanner.nextLine();
+        if (!CardValidator.isValidCVV(cvv)) {
+            System.out.println("Invalid CVV!");
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean processCardPayment(Scanner scanner) {
+        System.out.print("Enter your card number (16 digits): ");
+        String cardNumber = scanner.nextLine().replaceAll("\\s+", ""); // Убираем пробелы
+
+        if (!CardValidator.isValidCardNumber(cardNumber)) {
+            System.out.println("Invalid card number!");
+            return false;
+        }
+
+        System.out.print("Enter card expiration date (MM/YY): ");
+        String expiryDate = scanner.nextLine();
+        if (!CardValidator.isValidExpiryDate(expiryDate)) {
+            System.out.println("Invalid expiration date!");
+            return false;
+        }
+
+        System.out.print("Enter cardholder name (Firstname Lastname): ");
+        String cardHolder = scanner.nextLine();
+
+        System.out.print("Enter CVV (3 digits): ");
+        String cvv = scanner.nextLine();
+        if (!CardValidator.isValidCVV(cvv)) {
+            System.out.println("Invalid CVV!");
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean processCryptoPayment(Scanner scanner) {
+        System.out.println("Available cryptocurrencies: BTC, ETH, USDT, TRX");
+        System.out.print("Enter the cryptocurrency type: ");
+        String cryptoType = scanner.nextLine().toUpperCase();
+
+        if (!cryptoType.matches("BTC|ETH|USDT|TRX")) {
+            System.out.println("Invalid cryptocurrency type!");
+            return false;
+        }
+
+        System.out.print("Enter your wallet address: ");
+        String walletAddress = scanner.nextLine();
+        if (walletAddress.length() < 26 || walletAddress.length() > 42) {
+            System.out.println("Invalid wallet address!");
+            return false;
+        }
+
+        return true;
+    }
+
+
+
     private void showRooms() {
         System.out.println("\n=== All Rooms ===");
         List<Room> rooms = roomController.getAllRoomsList();
@@ -245,7 +396,7 @@ public class MyApplication {
         String response = bookingController.createBooking(booking);
 
         if (response.contains("successfully")) {
-            System.out.println("Booking confirmed! Please make a payment at our reception using your Booking ID.");
+            System.out.println("Booking confirmed! Please make a payment on menu Make a Payment by Booking ID.");
         } else {
             System.out.println("Booking failed! Try again.");
         }
@@ -277,14 +428,12 @@ public class MyApplication {
 
     private void adminMainMenu() {
         Map<Integer, Runnable> menuActions = new HashMap<>();
-        menuActions.put(1, () -> { showAllBookings(); });
-        menuActions.put(2, () -> { cancelBooking(); });
-        menuActions.put(3, () -> { showRooms1(); });
-        menuActions.put(4, () -> { addRoom(); });
-        menuActions.put(5, () -> { deleteRoom(); });
-        menuActions.put(0, () -> {
-            System.out.println("Logging out...");
-        });
+        menuActions.put(1, this::showAllBookings);
+        menuActions.put(2, this::cancelBooking);
+        menuActions.put(3, this::showRooms1);
+        menuActions.put(4, this::addRoom);
+        menuActions.put(5, this::deleteRoom);
+        menuActions.put(0, () -> System.out.println("Logging out..."));
 
         while (true) {
             System.out.println("\n=== ADMIN MENU ===");
@@ -296,15 +445,22 @@ public class MyApplication {
             System.out.println("0. Logout");
             System.out.print("Choose an option: ");
 
-            int choice = scanner.nextInt();
-            scanner.nextLine();
+            int choice;
+            try {
+                choice = scanner.nextInt();
+                scanner.nextLine();
+            } catch (InputMismatchException e) {
+                System.out.println("Invalid input! Please enter a number.");
+                scanner.nextLine();
+                continue;
+            }
 
             menuActions.getOrDefault(choice, () -> System.out.println("Invalid option! Try again.")).run();
-
 
             if (choice == 0) return;
         }
     }
+
 
     private void showRooms1() {
         System.out.println("\n=== All Rooms ===");
@@ -400,10 +556,17 @@ public class MyApplication {
     private void cancelBooking() {
         System.out.print("Enter booking ID to cancel: ");
 
-        Optional.of(scanner.nextInt())
-                .ifPresent(bookingId -> {
-                    scanner.nextLine();
-                    System.out.println(bookingController.cancelBooking(bookingId));
-                });
+        int bookingId;
+        try {
+            bookingId = scanner.nextInt();
+            scanner.nextLine();
+        } catch (InputMismatchException e) {
+            System.out.println("Invalid input! Please enter a valid booking ID.");
+            scanner.nextLine();
+            return;
+        }
+
+        System.out.println(bookingController.cancelBooking(bookingId));
     }
+
 }
